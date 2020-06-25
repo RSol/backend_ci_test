@@ -55,6 +55,9 @@ CREATE TABLE `comment` (
   `id` int(11) NOT NULL,
   `user_id` int(10) UNSIGNED NOT NULL,
   `assign_id` int(10) UNSIGNED NOT NULL,
+  `lft` BIGINT NOT NULL,
+  `rgt` BIGINT NOT NULL,
+  `level` BIGINT NOT NULL,
   `text` text CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
   `time_created` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `time_updated` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -64,10 +67,11 @@ CREATE TABLE `comment` (
 -- Dumping data for table `comment`
 --
 
-INSERT INTO `comment` (`id`, `user_id`, `assign_id`, `text`, `time_created`) VALUES
-(1, 1, 1, 'Ну чо ассигн проверим', '2020-03-27 21:39:44'),
-(2, 1, 1, 'Второй коммент', '2020-03-27 21:39:55'),
-(3, 2, 1, 'Второй коммент от второго человека', '2020-03-27 21:40:22');
+INSERT INTO `comment` (`id`, `user_id`, `assign_id`, `text`, `time_created`, `lft`, `rgt`, `level`) VALUES
+(1, 1, 1, 'Root', '2020-03-27 21:39:44', 1, 8, 0),
+(2, 1, 1, 'Ну чо ассигн проверим', '2020-03-27 21:39:44', 2, 3, 1),
+(3, 1, 1, 'Второй коммент', '2020-03-27 21:39:55', 4, 5, 1),
+(4, 2, 1, 'Второй коммент от второго человека', '2020-03-27 21:40:22', 6, 7, 1);
 
 -- --------------------------------------------------------
 
@@ -167,7 +171,7 @@ ALTER TABLE `boosterpack`
 -- AUTO_INCREMENT for table `comment`
 --
 ALTER TABLE `comment`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `post`
@@ -181,6 +185,8 @@ ALTER TABLE `post`
 ALTER TABLE `user`
   MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 COMMIT;
+
+CREATE INDEX comment_idx ON comment (lft, rgt, level);
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
