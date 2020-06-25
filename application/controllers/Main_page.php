@@ -59,30 +59,88 @@ class Main_page extends MY_Controller
     }
 
 
-    public function comment($post_id,$message){ // or can be App::get_ci()->input->post('news_id') , but better for GET REQUEST USE THIS ( tests )
+    public function comment($post_id){ // or can be App::get_ci()->input->post('news_id') , but better for GET REQUEST USE THIS ( tests )
 
-        if (!User_model::is_logged()){
-            return $this->response_error(CI_Core::RESPONSE_GENERIC_NEED_AUTH);
-        }
+        $message = App::get_ci()->input->post('message');
 
-        $post_id = intval($post_id);
-
+        $post_id = (int)$post_id;
         if (empty($post_id) || empty($message)){
             return $this->response_error(CI_Core::RESPONSE_GENERIC_WRONG_PARAMS);
         }
 
-        try
-        {
+        try {
             $post = new Post_model($post_id);
         } catch (EmeraldModelNoDataException $ex){
             return $this->response_error(CI_Core::RESPONSE_GENERIC_NO_DATA);
         }
 
+        Comment_model::create([
+            'user_id' => (random_int(1, 100) % 2) + 1,
+            'assign_id' => $post->get_id(),
+            'text' => $message,
+        ]);
 
         $posts =  Post_model::preparation($post, 'full_info');
         return $this->response_success(['post' => $posts]);
     }
 
+    public function comment_answer($id)
+    {
+        $message = App::get_ci()->input->post('message');
+
+        $id = (int) $id;
+        if (empty($id) || empty($message)){
+            return $this->response_error(CI_Core::RESPONSE_GENERIC_WRONG_PARAMS);
+        }
+
+        try
+        {
+            $comment = new Comment_model($id);
+        } catch (EmeraldModelNoDataException $ex){
+            return $this->response_error(CI_Core::RESPONSE_GENERIC_NO_DATA);
+        }
+
+        try {
+            $post = new Post_model($comment->get_assign_id());
+        } catch (EmeraldModelNoDataException $ex){
+            return $this->response_error(CI_Core::RESPONSE_GENERIC_NO_DATA);
+        }
+
+        Comment_model::createAnswer($comment->get_id(), [
+            'user_id' => (random_int(1, 100) % 2) + 1,
+            'assign_id' => $post->get_id(),
+            'text' => $message,
+        ]);
+
+        $posts =  Post_model::preparation($post, 'full_info');
+        return $this->response_success(['post' => $posts]);
+    }
+
+    public function comment_delete($id)
+    {
+        $id = (int) $id;
+        if (empty($id)){
+            return $this->response_error(CI_Core::RESPONSE_GENERIC_WRONG_PARAMS);
+        }
+
+        try
+        {
+            $comment = new Comment_model($id);
+        } catch (EmeraldModelNoDataException $ex){
+            return $this->response_error(CI_Core::RESPONSE_GENERIC_NO_DATA);
+        }
+
+        try {
+            $post = new Post_model($comment->get_assign_id());
+        } catch (EmeraldModelNoDataException $ex){
+            return $this->response_error(CI_Core::RESPONSE_GENERIC_NO_DATA);
+        }
+
+        $comment->delete();
+
+        $posts =  Post_model::preparation($post, 'full_info');
+        return $this->response_success(['post' => $posts]);
+    }
 
     public function login($user_id)
     {

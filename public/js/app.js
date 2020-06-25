@@ -26,6 +26,8 @@ var app = new Vue({
 				price: 50
 			},
 		],
+		answerText: '',
+		answerId: 0,
 	},
 	computed: {
 		test: function () {
@@ -120,7 +122,54 @@ var app = new Vue({
 						}, 500);
 					}
 				})
-		}
+		},
+		addComment() {
+			if (this.commentText) {
+				var self = this;
+				var bodyFormData = new FormData();
+				bodyFormData.set('message', this.commentText);
+				axios.post('/main_page/comment/' + this.post.id, bodyFormData)
+					.then(function (response) {
+						self.post = response.data.post;
+						self.commentText = '';
+					})
+			}
+		},
+		showAnswer(id) {
+			if (id === this.answerId) {
+				this.answerId = 0;
+			} else {
+				this.answerText = '';
+				this.answerId = id;
+			}
+		},
+		addAnswer() {
+			if (this.answerText) {
+				var self = this;
+				var bodyFormData = new FormData();
+				bodyFormData.set('message', this.answerText);
+				axios.post('/main_page/comment_answer/' + this.answerId, bodyFormData)
+					.then(function (response) {
+						self.post = response.data.post;
+						self.answerText = '';
+						self.answerId = 0;
+					})
+			}
+		},
+		deleteAnswer(id) {
+			var self = this;
+			axios.delete('/main_page/comment_delete/' + id)
+				.then(function (response) {
+					self.post = response.data.post;
+				});
+		},
+		dashes: function (level) {
+			var str = '';
+			for(var i = 1; i < level; i++) {
+				str += '-';
+			}
+			return str;
+		},
 	}
 });
 

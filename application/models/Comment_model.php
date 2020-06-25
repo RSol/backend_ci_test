@@ -14,9 +14,11 @@ class Comment_model extends CI_Emerald_Model
     /** @var int */
     protected $user_id;
     /** @var int */
-    protected $assing_id;
+    protected $assign_id;
     /** @var string */
     protected $text;
+    /** @var int */
+    protected $level;
 
     /** @var string */
     protected $time_created;
@@ -51,22 +53,30 @@ class Comment_model extends CI_Emerald_Model
     /**
      * @return int
      */
-    public function get_assing_id(): int
+    public function get_assign_id(): int
     {
-        return $this->assing_id;
+        return $this->assign_id;
     }
 
     /**
-     * @param int $assing_id
+     * @param int $assign_id
      *
      * @return bool
      */
-    public function set_assing_id(int $assing_id)
+    public function set_assign_id(int $assign_id)
     {
-        $this->assing_id = $assing_id;
-        return $this->save('assing_id', $assing_id);
+        $this->assign_id = $assign_id;
+        return $this->save('assign_id', $assign_id);
     }
 
+
+    /**
+     * @return int
+     */
+    public function get_level(): int
+    {
+        return $this->level;
+    }
 
     /**
      * @return string
@@ -180,15 +190,121 @@ class Comment_model extends CI_Emerald_Model
 
     public static function create(array $data)
     {
-        App::get_ci()->s->from(self::CLASS_TABLE)->insert($data)->execute();
-        return new static(App::get_ci()->s->get_insert_id());
+        $root = self::getRoot($data);
+        return self::createAnswer($root['id'], $data);
+    }
+
+    private static function addRoot(array $data)
+    {
+        $s = App::get_ci()->s;
+
+        $root = $data;
+        $root['lft'] = 1;
+        $root['text'] = 'Root';
+        $root['rgt'] = 2;
+        $root['level'] = 0;
+        $s->from(self::CLASS_TABLE)
+            ->insert($root)
+            ->execute();
+        $root['id'] = $s->get_insert_id();
+        return $root;
+    }
+
+    private static function getRoot(array $data)
+    {
+        $s = App::get_ci()->s;
+        $root = $s->from(self::CLASS_TABLE)
+            ->where([
+                'assign_id' => $data['assign_id'],
+                'level' => 0,
+            ])
+            ->one();
+        if ($root) {
+            return $root;
+        }
+        return self::addRoot($data);
+    }
+
+    public static function createAnswer($id, array $data)
+    {
+        $s = App::get_ci()->s;
+        $parentComment = $s->from(self::CLASS_TABLE)->where([
+            'id' => $id,
+        ])->one();
+        if (!$parentComment) {
+            throw new Exception('Don\'t find source');
+        }
+
+        $s
+            ->from(self::CLASS_TABLE)
+            ->where([
+                'assign_id' => $parentComment['assign_id'],
+                'lft >' => $parentComment['rgt']
+            ])
+            ->update('lft = rgt + 1')
+            ->execute();
+
+        $s
+            ->from(self::CLASS_TABLE)
+            ->where([
+                'assign_id' => $parentComment['assign_id'],
+                'rgt >=' => $parentComment['rgt'],
+            ])
+            ->update('rgt = rgt + 2')
+            ->execute();
+
+        $data['lft'] = $parentComment['rgt'];
+        $data['rgt'] = $parentComment['rgt'] + 1;
+        $data['level'] = $parentComment['level'] + 1;
+        $s
+            ->from(self::CLASS_TABLE)
+            ->insert($data)
+            ->execute();
+
+        return new static($s->get_insert_id());
     }
 
     public function delete()
     {
         $this->is_loaded(TRUE);
-        App::get_ci()->s->from(self::CLASS_TABLE)->where(['id' => $this->get_id()])->delete()->execute();
-        return (App::get_ci()->s->get_affected_rows() > 0);
+
+        $s = App::get_ci()->s;
+
+        $targetComment = $s->from(self::CLASS_TABLE)->where([
+            'id' => $this->get_id(),
+        ])->one();
+        if (!$targetComment) {
+            throw new Exception('Don\'t find source');
+        }
+
+        $s
+            ->from(self::CLASS_TABLE)
+            ->where(['assign_id' => $targetComment['assign_id']])
+            ->between(' AND lft', $targetComment['lft'], $targetComment['rgt'])
+            ->delete()
+            ->execute();
+        $affected_rows = $s->get_affected_rows();
+
+        $width = $targetComment['rgt'] - $targetComment['lft'] + 1;
+        $s
+            ->from(self::CLASS_TABLE)
+            ->where([
+                'assign_id' => $targetComment['assign_id'],
+                'rgt >' => $targetComment['rgt']
+            ])
+            ->update("rgt = rgt - {$width}")
+            ->execute();
+
+        $s
+            ->from(self::CLASS_TABLE)
+            ->where([
+                'assign_id' => $targetComment['assign_id'],
+                'lft >' => $targetComment['rgt']
+            ])
+            ->update("lft = lft - {$width}")
+            ->execute();
+
+        return ($affected_rows > 0);
     }
 
     /**
@@ -198,8 +314,20 @@ class Comment_model extends CI_Emerald_Model
      */
     public static function get_all_by_assign_id(int $assting_id)
     {
-
-        $data = App::get_ci()->s->from(self::CLASS_TABLE)->where(['assign_id' => $assting_id])->orderBy('time_created','ASC')->many();
+        $tableName = self::CLASS_TABLE;
+        $data = App::get_ci()->s
+            ->from("{$tableName} AS node, {$tableName} AS parent")
+            ->where([
+                'parent.assign_id' => $assting_id,
+                'node.assign_id' => $assting_id,
+                'node.level >' => 0,
+                'parent.level' => 0,
+                ' AND node.lft>=parent.lft' => false,
+                ' AND node.lft<=parent.rgt' => false,
+            ])
+            ->orderBy('node.lft','ASC')
+            ->select('node.*')
+            ->many();
         $ret = [];
         foreach ($data as $i)
         {
@@ -243,6 +371,7 @@ class Comment_model extends CI_Emerald_Model
             $o->user = User_model::preparation($d->get_user(),'main_page');
 
             $o->likes = rand(0, 25);
+            $o->level = $d->get_level();
 
             $o->time_created = $d->get_time_created();
             $o->time_updated = $d->get_time_updated();

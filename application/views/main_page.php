@@ -177,13 +177,29 @@
                   <span>{{likes}}</span>
                 </div>
               </div>
-              <p class="card-text" v-for="comment in post.coments"> {{comment.user.personaname + ' - '}}<small class="text-muted">{{comment.text}}</small></p>
-              <form class="form-inline">
+                <div class="card-text" v-if="post.coments" v-for="comment in post.coments" :key="comment.id">
+                    {{dashes(comment.level)}}
+                    {{comment.user.personaname + ' - '}}
+                    <small class="text-muted">{{comment.text}}</small>
+                    <a href="#" @click="showAnswer(comment.id)">
+                        Comment
+                    </a>
+                    <a href="#" @click="deleteAnswer(comment.id)">
+                        Delete
+                    </a>
+                    <div class="form-inline" v-if="comment.id === answerId">
+                        <div class="form-group">
+                            <input type="text" class="form-control" id="addComment" v-model="answerText">
+                        </div>
+                        <button type="submit" class="btn btn-primary" @click.prevent="addAnswer()">Add comment</button>
+                    </div>
+                </div>
+              <div class="form-inline">
                 <div class="form-group">
                   <input type="text" class="form-control" id="addComment" v-model="commentText">
                 </div>
-                <button type="submit" class="btn btn-primary">Add comment</button>
-              </form>
+                <button type="submit" class="btn btn-primary" @click="addComment">Add comment</button>
+              </div>
             </div>
           </div>
         </div>

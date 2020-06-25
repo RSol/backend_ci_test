@@ -52,6 +52,8 @@
  *
  * NOTE: If you change these, also change the error_reporting() code below
  */
+define('ENV_DEVELOPMENT', 'development');
+define('ENV_PRODUCTION', 'production');
 define('ENVIRONMENT', isset($_SERVER['CI_ENV']) ? $_SERVER['CI_ENV'] : 'development');
 
 if(isset($_SERVER['CI_DOMAIN']))
@@ -107,7 +109,7 @@ switch (ENVIRONMENT)
  * Include the path if the folder is not in the same directory
  * as this file.
  */
-$system_path = '../system';
+$system_path = __DIR__ . '/../system';
 
 /*
  *---------------------------------------------------------------
@@ -122,7 +124,7 @@ $system_path = '../system';
  *
  * NO TRAILING SLASH!
  */
-$application_folder = '/var/www/test_task/application';
+$application_folder = __DIR__ . '/../application';
 
 /*
  *---------------------------------------------------------------
@@ -200,7 +202,7 @@ $view_folder = '';
 // Set the current directory correctly for CLI requests
 if (defined('STDIN'))
 {
-    chdir(dirname(__FILE__));
+    chdir(__DIR__);
 }
 
 if (($_temp = realpath($system_path)) !== FALSE)
@@ -232,7 +234,7 @@ define('SELF', pathinfo(__FILE__, PATHINFO_BASENAME));
 define('BASEPATH', str_replace('\\', '/', $system_path));
 
 // Path to the front controller (this file)
-define('FCPATH', dirname(__FILE__) . '/');
+define('FCPATH', __DIR__ . '/');
 
 // Name of the "system folder"
 define('SYSDIR', trim(strrchr(trim(BASEPATH, '/'), '/'), '/'));
@@ -286,20 +288,20 @@ if (($_temp = realpath($view_folder)) !== FALSE)
 define('VIEWPATH', $view_folder);
 
 
-if(ENVIRONMENT == 'development')
-{
-    include_once APPPATH . 'vendor/php_error.php';
-
-    $options = array(
-        'catch_ajax_errors' => FALSE,
-        'error_reporting_off' => 0,
-        'error_reporting_on' => E_STRICT,
-        'enable_saving' => FALSE
-    );
-
-    \php_error\reportErrors($options);
-
-}
+//if(ENVIRONMENT === 'development')
+//{
+//    include_once APPPATH . 'vendor/php_error.php';
+//
+//    $options = array(
+//        'catch_ajax_errors' => FALSE,
+//        'error_reporting_off' => 0,
+//        'error_reporting_on' => E_STRICT,
+//        'enable_saving' => FALSE
+//    );
+//
+//    \php_error\reportErrors($options);
+//
+//}
 
 /*
  * --------------------------------------------------------------------
